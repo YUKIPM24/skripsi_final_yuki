@@ -18,10 +18,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.naive_bayes import ComplementNB
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, f1_score, classification_report
-from io import BytesIO
-from openpyxl import load_workbook
-from openpyxl.styles import Font, Border, Side
-from pymongo.mongo_client import MongoClient
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -452,47 +448,16 @@ def predict_text_page():
 
 # Halaman Predict DataFrame
 def create_template():
-    client = MongoClient("mongodb+srv://yukipm2ypm:WFTaqxEJvZXmdfIP@clusterhonda.hjc2t9k.mongodb.net/?retryWrites=true&w=majority&appName=Clusterhonda")
-    db = client["AnalisisSentimenDB"]
-    collection_dataset = db["Dataset"]
-    results = collection_dataset.find({})
-    id = []
-    author = []
-    description = []
-    guid = []
-    to = []
-    likecount = []
-    link = []
-    pubdate = []
-    replycount = []
-    title = []
-    authorChannelUrl = []
-    for document in results:
-        id.append(document['id'])
-        author.append(document['author'])
-        description.append(document['description'])
-        guid.append(document['guid'])
-        to.append(document['to'])
-        likecount.append(document['likecount'])
-        link.append(document['link'])
-        pubdate.append(document['pubdate'])
-        replycount.append(document['replycount'])
-        title.append(document['title'])
-        authorChannelUrl.append(document['authorChannelUrl'])
-
     # Create a template DataFrame with example data
     data = {
-        "id": id,
-        "author": author,
-        "description": description,
-        "guid": guid,
-        "to": to,
-        "likecount": likecount,
-        "link": link,
-        "pubdate": pubdate,
-        "replycount": replycount,
-        "title": title,
-        "authorChannelUrl": authorChannelUrl
+        "text": ["Sample text 1", "Sample text 2", "Sample text 3"],
+        "other_column": ["Example 1", "Example 2", "Example 3"],
+        "new_column": ["Value 1", "Value 2", "Value 3"]  # Add new column here
+    }
+    data = {
+        "coba": ["Sample text 1", "Sample text 2", "Sample text 3"],
+        "other_column": ["Example 1", "Example 2", "Example 3"],
+        "new_column": ["Value 1", "Value 2", "Value 3"]  # Add new column here
     }
 
     template_df = pd.DataFrame(data)
@@ -505,35 +470,12 @@ def predict_dataframe_page():
     # Create a download link for the template
     template_df = create_template()
     st.markdown("### Download Template")
-
-    buffer = BytesIO()
-    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-        template_df.to_excel(writer, index=False, sheet_name='Sheet1')
-    buffer.seek(0)
-    
-    # Load the workbook and adjust the styling
-    wb = load_workbook(buffer)
-    ws = wb.active
-
-    # Remove bold and border
-    thin = Side(border_style=None)
-    no_border = Border(left=thin, right=thin, top=thin, bottom=thin)
-
-    for row in ws.iter_rows():
-        for cell in row:
-            cell.font = Font(bold=False)
-            cell.border = no_border
-    
-    # Save the styled workbook to buffer
-    buffer = BytesIO()
-    wb.save(buffer)
-    buffer.seek(0)
-    
+    csv = template_df.to_csv(index=False).encode('utf-8')
     st.download_button(
-        label="Download Excel Template",
-        data=buffer,
-        file_name='template.xlsx',
-        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        label="Download CSV Template",
+        data=csv,
+        file_name='template.csv',
+        mime='text/csv',
     )
     
     uploaded_file = st.file_uploader("Upload your DataFrame", type=['xlsx', 'csv'])
@@ -548,13 +490,6 @@ def predict_dataframe_page():
         selectbox = st.selectbox("Select Features", column_df, placeholder="Pilih kolom yang akan di prediksi", index=None)
         submit_df = st.button(f'Predict Column {selectbox} Sentiments from DataFrame')
 
-        client = MongoClient("mongodb+srv://yukipm2ypm:WFTaqxEJvZXmdfIP@clusterhonda.hjc2t9k.mongodb.net/?retryWrites=true&w=majority&appName=Clusterhonda")
-        db = client["AnalisisSentimenDB"]
-        collection_dataset = db["Dataset"]
-        dataset = df.to_dict(orient='records')
-
-        collection_dataset.delete_many({})
-        collection_dataset.insert_many(dataset)
 
 
 
@@ -562,7 +497,9 @@ def predict_dataframe_page():
 
 
 
-        if submit_df:            
+
+        if submit_df:
+            
             start = time.time()
             
             #cleansing
@@ -1096,16 +1033,11 @@ def report_page():
         st.dataframe(report_data, use_container_width=True)
 
 # Session State untuk Login
-if st.session_state.get("logged_in") != True:
-    client = MongoClient("mongodb+srv://yukipm2ypm:WFTaqxEJvZXmdfIP@clusterhonda.hjc2t9k.mongodb.net/?retryWrites=true&w=majority&appName=Clusterhonda")
-    db = client["AnalisisSentimenDB"]
-    collection_dataset = db["Dataset"]
-
-    collection_dataset.delete_many({})
+if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 # Tampilkan Halaman Login Jika Belum Login
-if st.session_state.get("logged_in") != True:
+if not st.session_state.logged_in:
     login_page()
 else:
     # Tampilkan Halaman Isi
